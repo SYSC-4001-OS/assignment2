@@ -120,7 +120,7 @@ int findMetric(int id)
 		}
 	}
 	//something wrong has occured
-	printf("!ERROR - PID NOT FOUND IN METRICS - LINE 121!");
+	printf("!ERROR - PID NOT FOUND IN METRICS - LINE 123!");
 	exit(0);
 }
 
