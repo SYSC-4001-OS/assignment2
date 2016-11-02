@@ -1,5 +1,5 @@
 /**
-*Class:             linkedList.c
+*Class:             main.c
 *Project:           SYSC4001 Assignment 2
 *Authors:           Jason Van Kerkhoven
 * 					Brydon Gibson                                            
@@ -10,7 +10,14 @@
 * 
 * 
 *Update Log:		v1.0.0
-*						- linked list implimented
+*						- all arrays implimented to simulate state diagram
+* 						- print statments FINALLY stopped segfaulting
+* 						- general print statments added
+* 						- file is now read and parsed
+* 						- patched that nasty bug with the last param in a file
+* 						  being dropped
+* 						- new struct introduced to hold arrival time and PCB
+* 						- code easier to look at thanks to big-ass horizontal lines 
 */
 //	printf("%s\n","test");
 

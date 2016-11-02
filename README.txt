@@ -13,7 +13,9 @@ INPUT FORMAT:
 	It should be noted that each line denotes a new proccess with the
 	information per being shown as follows:
 	
-	PID		requiredCPUTime		ioFrequency		ioDuration		ArivalTime
+	---------------------------------------------------------------------------
+	|  PID  |  requiredCPUTime  |  ioFrequency  |  ioDuration  |  ArivalTime  |
+	---------------------------------------------------------------------------
 	
 	With the use of SINGLE SPACES (' ') to denote where one parameter ends,
 	and the next one begins. The values entered are to be encoded with standard
