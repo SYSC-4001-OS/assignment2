@@ -44,4 +44,4 @@ INPUT FORMAT:
 	Exceding the maximun number of allowed processes will cause unexpected errors.
 	
 	It should also be noted each parameter field has a maximum number of characters
-	of TEN (10) characters.
+	of TEN (10) characters. Exceding this maximum will result in unexpected errors.
