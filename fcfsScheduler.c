@@ -154,13 +154,14 @@ void printPCB(PCB proc)
 
 
 //print PCB array
-void printPCBArray(PCB arr[], int length)
+void printNewArray()
 {
 	int i=0;
-	for(i=0; i<length; i++)
+	for(i=0; i<newArrSize; i++)
 	{
 		//print PCB
-		printPCB(arr[i]);
+		printPCB(newArr[i].pcb);
+		printf("Arvl:  %d\n\n", newArr[i].arrival);
 	}
 }
 
@@ -291,7 +292,7 @@ int main(int argc, char const *argv[])
 	printf("%d PCBs added to NEW array\n", newArrSize);
 	printf("Dumping contents of NEW array...\n");
 	printf("-----------------------------------------\n");
-	printPCBAndArrivalArray(newArr, newArrSize);
+	printNewArray();
 	printf("-----------------------------------------\n\n");
 	
 	//set up struct array to hold data for post-mortum
