@@ -1,11 +1,11 @@
-#####################################################
+#########################################################
 #	    ____  _________    ____     __  _________	#
 #	   / __ \/ ____/   |  / __ \   /  |/  / ____/	#
 #	  / /_/ / __/ / /| | / / / /  / /|_/ / __/   	#
 #	 / _, _/ /___/ ___ |/ /_/ /  / /  / / /___   	#
 #	/_/ |_/_____/_/  |_/_____/  /_/  /_/_____/   	#
-#													#
-#####################################################                                          
+#							#
+#########################################################                                       
 
 Assignment 2
 SYSC 4001
@@ -13,7 +13,7 @@ SYSC 4001
 Jason Van Kerkhoven		[100974276]
 Brydon Gibson			[100xxxxxx]
 
-01/11/2016
+04/11/2016
 
 
 -----------------------------------------------------------
@@ -105,3 +105,12 @@ PRIORITY QUEUES WITHOUT IO 			(.pq)
 -----------------------------------------------------------
 INPUT FORMAT:
 PRIORITY QUEUES WITH IO 			(.pqx)
+-----------------------------------------------------------
+testBench.bash:
+	
+	testBench.bash has the capability to test all four of the programs just by being run
+	
+		It will echo into the appropriate files to run all of the programs, and run
+		them one by one. It is not interactive and if the programs are not compiled
+		and executable, it will not run correctly
+
