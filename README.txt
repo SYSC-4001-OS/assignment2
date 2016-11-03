@@ -17,6 +17,13 @@ Brydon Gibson			[100xxxxxx]
 
 
 -----------------------------------------------------------
+FILE PURPOSES:
+
+	
+	start here
+	
+	
+-----------------------------------------------------------
 INPUT FORMAT:
 FIRST-COME FIRST-SERVE WITH IO 		(.fcfsx)
 
@@ -102,9 +109,19 @@ FIRST-COME FIRST-SERVE WITHOUT IO 	(.fcfs)
 -----------------------------------------------------------
 INPUT FORMAT:
 PRIORITY QUEUES WITHOUT IO 			(.pq)
+
+
+	start here
+	
+	
 -----------------------------------------------------------
 INPUT FORMAT:
 PRIORITY QUEUES WITH IO 			(.pqx)
+
+
+	start here
+	
+	
 -----------------------------------------------------------
 testBench.bash:
 	
