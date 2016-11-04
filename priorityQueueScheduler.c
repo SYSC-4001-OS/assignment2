@@ -373,5 +373,27 @@ int main(int argc, char const *argv[])
 		calculateMetrics(i);
 	}
 
+	printf("-----------------------------------------\nProcess metrics\n-----------------------------------------\n");
+
 	printMetricsArray(metrics, metricsSize);
+
+
+	double avWait = 0;
+	double avTurnaround = 0;
+		//calculate final stats
+	for (int i=0; i<metricsSize; i++)
+	{
+		avWait = avWait + metrics[i].meanWaitingTime;
+		avTurnaround = avTurnaround + metrics[i].turnaroundTime;
+	}
+	avWait = avWait/metricsSize;
+	avTurnaround = avTurnaround/metricsSize;
+
+	//print final values for scheduler
+	printf("-----------------------------------------\nCalculating Final Scheduler Statistics...\n-----------------------------------------\n");
+	printf("Average Process Waiting Time:  %lfms\nAverage Turnaround Time:       %lfms\nAverage Throughput:            %lf processes per 100ms\n\n\n\n", 
+			avWait, 
+			avTurnaround,
+			(100/avTurnaround));
+
 }
