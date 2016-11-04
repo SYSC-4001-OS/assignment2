@@ -366,14 +366,13 @@ int main(int argc, char const *argv[])
 						}
 					}
 
-<<<<<<< HEAD
 					//set metrics start time for process
 					for (int i=0, somethingSaved=FALSE; (i < metricsSize) && (somethingSaved == FALSE); i++)
 					{
 						//correct metrics found
 						if (metrics[i].PID == readyArr[readyArrSize].PID)
 						{	
-						metrics[i].startTime = simTime;
+						metrics[i].arrivalTime = simTime;
 							somethingSaved = TRUE ;
 						}
 						//check that we actually recorded something, we should never enter this statment
@@ -384,11 +383,9 @@ int main(int argc, char const *argv[])
 						}
 					}
 
-=======
 					//set metrics arrival time for process
 					index = findMetric(readyArr[readyArrSize].PID);
 					metrics[index].arrivalTime = simTime;
->>>>>>> 71babefb4f71c303cca2ea43feaf7614fed84ff7
 					//inc readyArrSize
 					readyArrSize++;
 				}
