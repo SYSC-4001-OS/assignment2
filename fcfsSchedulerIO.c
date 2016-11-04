@@ -5,14 +5,16 @@
 * 					Brydon Gibson
 *                                            
 *Date of Update:    03/11/2016                                             
-*Version:           1.3.0                                                   
+*Version:           1.3.1                                                   
 *                                                                                   
 *Purpose:           Simulator for a frist-come first-serve scheduling algorithm. Takes in PCB inputs as a .fcfs file,
 *					parses into PCB structs, and runs simulation based on FCFS. Records important data points during
 *					execution using processMetrics struct. Frequent breaks for I/O.
 * 
 * 
-*Update Log:		v1.3.0
+*Update Log:		v1.3.1
+*						- bug in final av wait time patched (summing the processes tot wait time, not av wait time)
+*					v1.3.0
 *						- branched from fcfsSchedualer.c
 *						- PCB struct added new values for I/O
 *						- input changed to accept new format
@@ -526,7 +528,7 @@ int main(int argc, char const *argv[])
 	//calculate final stats
 	for (int i=0; i<metricsSize; i++)
 	{
-		avWait = avWait + metrics[i].waitingTime;
+		avWait = avWait + metrics[i].meanWaitingTime;
 		avTurnaround = avTurnaround + metrics[i].turnaroundTime;
 	}
 	avWait = avWait/metricsSize;
