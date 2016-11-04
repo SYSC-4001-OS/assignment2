@@ -17,6 +17,13 @@ Brydon Gibson			[100xxxxxx]
 
 
 -----------------------------------------------------------
+FILE PURPOSES:
+
+	
+	start here
+	
+	
+-----------------------------------------------------------
 INPUT FORMAT:
 FIRST-COME FIRST-SERVE WITH IO 		(.fcfsx)
 
@@ -103,7 +110,6 @@ FIRST-COME FIRST-SERVE WITHOUT IO 	(.fcfs)
 INPUT FORMAT:
 PRIORITY QUEUES WITHOUT IO 			(.pq)
 
-
 	It should be noted that each line denotes a new proccess with the
 	information per being shown as follows:
 	
@@ -142,7 +148,6 @@ PRIORITY QUEUES WITHOUT IO 			(.pq)
 -----------------------------------------------------------
 INPUT FORMAT:
 PRIORITY QUEUES WITH IO 			(.pqx)
-
 
 	It should be noted that each line denotes a new proccess with the
 	information per being shown as follows:

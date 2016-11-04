@@ -1,21 +1,52 @@
 /**
-*Class:             fcfsSchedulerIO.c
+*File:            	fcfsSchedulerIO.c
 *Project:           SYSC4001 Assignment 2
 *Authors:           Jason Van Kerkhoven
-* 					Brydon Gibson                                            
-*Date of Update:    01/11/2016                                              
-*Version:           1.0.0                                                   
+* 					Brydon Gibson
+*                                            
+*Date of Update:    03/11/2016                                             
+*Version:           1.3.1                                                   
 *                                                                                   
-*Purpose:           Stuff
+*Purpose:           Simulator for a frist-come first-serve scheduling algorithm. Takes in PCB inputs as a .fcfs file,
+*					parses into PCB structs, and runs simulation based on FCFS. Records important data points during
+*					execution using processMetrics struct. Frequent breaks for I/O.
 * 
 * 
-*Update Log:		v1.1.0
+*Update Log:		v1.3.1
+*						- bug in final av wait time patched (summing the processes tot wait time, not av wait time)
+*					v1.3.0
+*						- branched from fcfsSchedualer.c
+*						- PCB struct added new values for I/O
+*						- input changed to accept new format
+*						- bug patched where I/O always exited 1 tick early
+*					v1.2.2
+*						- now records process turnaround, throughput, burst#,  total waiting time, av waiting time
+*						- processMetrics now holds endTime
+*						- final print added
+*						- final stats calculated (av throughput changed to show as processes/100ms so its not a tiny decimal
+*						- print statments made to allign arrows to show state change
+*					v1.2.1
+*						- metrics[] and metricsSize made global
+*						- printMetrics() function implimented for dumping array of processMetrics
+*						- logic for processMetric array fixed (shoutout to Brydon "Bry-Guy" Gibson for the debugging help
+*						- metrics[] now fixed size equal to max allowed processes (40)
+*						- metricsSize now critical. Used for representation of effective size of metrics[]
+*						- now records program ID and start time in metrics[]
+*						- print statments cleaned up to be more human-readable
+*					v1.2.0
+*						- burned to the ground, lets start again from v1.1.0
+*					v1.1.0
 *						- removed print statments from file parse (now that we know it works)
 *						- branched from main.c 	
 *											\--> fcfsScheduler.c
 *											 \--> fcfsSchedulerIO.c
 *											  \--> priorityQueueScheduler.c
 *											   \--> prorityQueueSchedulerIO.c
+*						- removed I/O related values from struct (no longer needed)
+*						- removed I/O related values from print functions
+*						- removed I/O related values from process file
+*						- SNAZZY acronyms made for file extentions ;)
+*						- pretty much all of the fcfs logic implimented
 *					v1.0.0
 *						- all arrays implimented to simulate state diagram
 * 						- print statments FINALLY stopped segfaulting
@@ -24,7 +55,7 @@
 * 						- patched that nasty bug with the last param in a file
 * 						  being dropped
 * 						- new struct introduced to hold arrival time and PCB
-* 						- code easier to look at thanks to big-ass horizontal lines 
+* 						- code easier to look at thanks to big-ass horizontal lines
 */
 
 
@@ -36,6 +67,8 @@
 
 #define MAX_PCB_PARAM_CHAR 10
 #define MAX_PROCESSES 40
+#define TRUE 1
+#define FALSE 0
 
 
 //Declaring data structures
@@ -45,9 +78,10 @@ typedef struct PCB
 {
 	int PID;					//ID
 	int requiredCPUTime;		//How many ticks the process has until completion
-	int ioFrequency;			//How often the process goes to do I/O
-	int ioDuration;				//How long the process is gone to do I/O
-	int ioRemaining;			//How many ticks left until I/O is complete
+	int ioFreq;					//How often the processor needs to go do I/O
+	int ioTimeLeft;				//How much time left until the process needs I/O
+	int ioRem;					//How much time remaining in I/O
+	int ioDuration;				//How long the processor needs to peform I/O for
 } PCB;
 
 //temporary wrapper for newArr items
@@ -57,13 +91,25 @@ typedef struct PCBAndArrival
 	int arrival;				//when the PCB is schedualed to arrive
 }PCBAndArrival;
 
+//holds the running average for each processes waittime
+typedef struct processMetrics
+{
+	int PID;					//process ID these metrics are for
+	int endTime;				//when the process ended
+	int arrivalTime;			//when process was added to ready queue
+	int turnaroundTime;			//the process turnaround time (delta b/wn end and arival times)
+	int waitingTime;			//how many ms the process has been waiting in the ready queue total
+	int burstCount;				//running tally of how many bursts this process had to run to reach completion
+	double meanWaitingTime;		//waitingTime/burstCount
+}processMetrics;
+
 
 
 
 //Declaring global variables
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-long unsigned int simTime = 0;			//simutated time, in ms
-	
+long int simTime = 0;			//simutated time, in ms
+
 PCB readyArr[MAX_PROCESSES];			//the waiting pseudo-list for processes that need access to the CPU
 int readyArrSize = 0;					//effective size of above
 PCBAndArrival newArr[MAX_PROCESSES];	//the pseudo-list of all processes loaded in from .dat file
@@ -74,20 +120,62 @@ PCB terminatedArr[MAX_PROCESSES];		//the pseudo-list of all completed processes
 int terminatedArrSize = 0;				//the effective size of above
 PCB running;							//simulated processor. Whatever PCB is in here is "running"
 
+processMetrics metrics[MAX_PROCESSES];	//array of processMetrics structs for monitoring
+int metricsSize;						//effective size of metrics Array
 
 
 
-//Various print statments
+//Fucntions dealing with processMetrics struct
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//return the correct metric in an array
+int findMetric(int id)
+{
+	//set metrics start time for process
+	for (int i=0; i < metricsSize; i++)
+	{
+		//correct metrics found
+		if (metrics[i].PID == id)
+		{
+			return i;
+		}
+	}
+	//something wrong has occured
+	printf("!ERROR - PID NOT FOUND IN METRICS - LINE 107!");
+	exit(0);
+}
+
+
+
+
+//Functions to print misc. things
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//print array
+void printMetrics()
+{
+	for(int i=0; i < metricsSize; i++)
+	{
+		printf("PID:        %d\narrive t:   %d\nend t:      %d\nturn t:     %d\nwait t:     %d\nburst c:    %d\nav. wait t: %lf\n\n",
+				metrics[i].PID,
+				metrics[i].arrivalTime,
+				metrics[i].endTime,
+				metrics[i].turnaroundTime,
+				metrics[i].waitingTime,
+				metrics[i].burstCount,
+				metrics[i].meanWaitingTime);
+	}
+}
+
+
 //print PCB
 void printPCB(PCB proc)
 {
-	printf("PID:      %d\nCPU Time: %d\nIO Freq:  %d\nIO Dur:   %d\nIO Rem:   %d\n",
+	printf("PID:      %d\nCPU Time: %d\nIO Freq:  %d\nt to IO:  %d\nIO Dur:   %d\nIO Rem:   %d\n",
 			proc.PID,
 			proc.requiredCPUTime,
-			proc.ioFrequency,
+			proc.ioFreq,
+			proc.ioTimeLeft,
 			proc.ioDuration,
-			proc.ioRemaining);
+			proc.ioRem);
 }
 
 
@@ -100,6 +188,13 @@ void printPCBArray(PCB arr[], int length)
 		//print PCB
 		printPCB(arr[i]);
 	}
+}
+
+
+//print state change
+void printStateChange(int id, char msg[])
+{
+	printf("%dms   ID-%d   %s\n", simTime, id, msg);
 }
 
 
@@ -165,14 +260,15 @@ int getPCBData(char fileName[])
 						newArr[processNum].pcb.requiredCPUTime = tempNum;
 						break;
 					case(2):
-						newArr[processNum].pcb.ioFrequency = tempNum;
+						newArr[processNum].arrival = tempNum;
 						break;
 					case(3):
-						newArr[processNum].pcb.ioDuration = tempNum;
-						newArr[processNum].pcb.ioRemaining = 0;
+						newArr[processNum].pcb.ioFreq = tempNum;
+						newArr[processNum].pcb.ioTimeLeft = tempNum;
 						break;
 					case(4):
-						newArr[processNum].arrival = tempNum;
+						newArr[processNum].pcb.ioDuration = tempNum;
+						newArr[processNum].pcb.ioRem = tempNum;
 						break;
 					default:
 						printf("ERROR - UNEXPECTED NUMBER OF PARAMETERS");
@@ -219,11 +315,229 @@ int getPCBData(char fileName[])
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 int main(int argc, char const *argv[])
 {
-	newArrSize = getPCBData("PCBdata.dat");
+	//declaring local variables
+	double avWait = 0.0;					//mean wait time for schedualer
+	double avTurnaround = 0.0;				//mean turnaround time for schedualer
+	int newArrEmpty = FALSE;				//pseudo-boolean, denotes if newArr is empty
+	int cpuBusy = FALSE;					//pseudo-boolean, denotes if the CPU is busy
+	int index;								//where metric is located. Used to make code readable. Constantly overwritten and rewritten
+
+	//load up processes into newArr, print contents
+	newArrSize = getPCBData("PCBdata.fcfsx");
 	printf("%d PCBs added to NEW array\n", newArrSize);
-	printf("Dumping contents of NEW array...\n");
-	printf("-----------------------------------------\n");
+	printf("Dumping contents of NEW array...\n-----------------------------------------\n");
 	printPCBAndArrivalArray(newArr, newArrSize);
-	printf("-----------------------------------------\n\n");
-	printf("Starting Simulation...\n");
+	printf("\n");
+	
+	//set up struct array to hold data for post-mortum
+	metricsSize = newArrSize;
+	for (int i=0; i<newArrSize; i++)
+	{
+		metrics[i].PID = (newArr[i].pcb).PID;
+		metrics[i].endTime = 0;
+		metrics[i].meanWaitingTime = 0.0;
+		metrics[i].arrivalTime = 0;
+		metrics[i].turnaroundTime = 0;
+		metrics[i].waitingTime = 0;
+		metrics[i].burstCount = 0;
+	}
+
+	//dump metrics
+	printf("%d processMetrics added to METRICS array\n", newArrSize);
+	printf("Dumping contents of METRICS array...\n-----------------------------------------\n");
+	printMetrics();
+	printf("\n");
+
+	//start simulation, continue until all processes are complete
+	printf("Starting Simulation...\n-----------------------------------------\n");
+	while(terminatedArrSize < metricsSize)
+	{
+		//check for processes that have just arrived in newArr
+		if (newArrEmpty == FALSE)
+		{
+			for(int i=0; i < newArrSize; i++)
+			{
+				//process arrives to scheduler for dispatching, add to tail of readyArr
+				if (newArr[i].arrival <= simTime)
+				{
+					//add to readyArr and print
+					readyArr[readyArrSize] = newArr[i].pcb;
+					printStateChange(readyArr[readyArrSize].PID, "new     --> ready");
+
+					//shift array left
+					//case 1: i is at start or middle
+					if (i < newArrSize-1)
+					{
+						for (int a=i; a < newArrSize-1; a++)
+						{
+							newArr[a] = newArr[a+1];
+						}
+						//dec size of newArr, dec i so as we check the new value we shifted into i
+						newArrSize--;
+						i--;	
+					}
+					//case 2: i is at end
+					else
+					{
+						newArrSize--;
+						//check if empty
+						if (newArrSize == 0)
+						{
+							newArrEmpty == TRUE;
+						}
+					}
+
+					//set metrics arrival time for process
+					index = findMetric(readyArr[readyArrSize].PID);
+					metrics[index].arrivalTime = simTime;
+					//inc readyArrSize
+					readyArrSize++;
+				}
+			}
+		}
+
+		//simulate processor
+		//cpu idle, transfer first file in readyArr
+		if (cpuBusy == FALSE)
+		{
+			//check if there are processes waiting for CPU time
+			if (readyArrSize > 0)
+			{
+				//add first process in array and shift left
+				running = readyArr[0];
+				for (int i=0; i < readyArrSize-1; i++)
+				{
+					readyArr[i] = readyArr[i+1];
+				}
+				readyArrSize--;
+
+				//print and alter CPU flag
+				printStateChange(running.PID, "ready   --> running");
+				cpuBusy = TRUE;
+			}
+		}
+
+		//step forward in time
+		simTime++;
+
+		//run cpu process
+		if (cpuBusy == TRUE)
+		{
+			//run cpu
+			running.requiredCPUTime--;
+			running.ioTimeLeft--;
+
+			//check if done
+			if (running.requiredCPUTime <= 0)
+			{
+				//alter flags and metric
+				index = findMetric(running.PID);
+				metrics[index].burstCount++;
+				metrics[index].endTime = simTime;
+				metrics[index].turnaroundTime = (simTime - metrics[index].arrivalTime);
+				metrics[index].meanWaitingTime = metrics[index].waitingTime / metrics[index].burstCount;
+
+				//print
+				printStateChange(running.PID, "running --> complete");
+
+				//remove from CPU, DO NOT place back into ready list, add to terminatedArrSize
+				cpuBusy = FALSE;
+				terminatedArrSize++;
+			}
+			//check if IO needed
+			else if (running.ioTimeLeft <= 0)
+			{
+				//ajust metrics, set CPU flag
+				index = findMetric(running.PID);
+				metrics[index].burstCount++;
+				
+				//print
+				printStateChange(running.PID, "running --> waiting");
+
+				//add to waitingList, remove from CPU, reset ioTimeleft
+				cpuBusy = FALSE;
+				running.ioTimeLeft = running.ioFreq;
+				waitingArr[waitingArrSize] = running;
+				waitingArrSize++;
+			}
+			
+		}
+		else
+		{
+			printf("%dms          CPU IDLE\n", simTime);
+		}
+
+		//have processes do IO
+		for(int i = 0; i < waitingArrSize; i++)
+		{
+			//process is done io
+			if (waitingArr[i].ioRem == 0)
+			{
+				//reset ioRem to ioDuration, add process to readyArr, inc readyArrSize
+				waitingArr[i].ioRem = waitingArr[i].ioDuration;
+				readyArr[readyArrSize] = waitingArr[i];
+				readyArrSize++;
+
+				//print state change
+				printStateChange(waitingArr[i].PID, "waiting --> ready");
+
+				//remove from waitingArr, shift waitingArr left
+				//case 1: i is at start or middle
+				if (i < waitingArrSize-1)
+				{
+					for (int a=i; a < waitingArrSize-1; a++)
+					{
+						waitingArr[a] = waitingArr[a+1];
+					}
+					//dec size of newArr, dec i so as we check the new value we shifted into i
+					waitingArrSize--;
+				}
+				//case 2: i is at end
+				else
+				{
+					waitingArrSize--;
+				}
+			}
+			//should never enter
+			else if (waitingArr[i].ioRem < 0)
+			{
+				printf("\n!ERROR - WAITING FOR IO TOO LONG w/ i=%d ! - DUMPING ERROR CAUSING PCB\n", i);
+				printPCB(waitingArr[i]);
+				exit(0);
+			}
+
+			//decrement the amount of time process needs for io
+			waitingArr[i].ioRem--;
+		}
+
+
+		//increase stats for processes in readyArr
+		for(int i=0; i < readyArrSize; i++)
+		{
+			index = findMetric(readyArr[i].PID);
+			metrics[index].waitingTime++;
+		}
+
+	}
+
+	//print final values for each process run
+	printf("%dms   Simulation Complete!\n\n", simTime);
+	printf("Dumping contents of METRICS array...\n-----------------------------------------\n");
+	printMetrics();
+
+	//calculate final stats
+	for (int i=0; i<metricsSize; i++)
+	{
+		avWait = avWait + metrics[i].meanWaitingTime;
+		avTurnaround = avTurnaround + metrics[i].turnaroundTime;
+	}
+	avWait = avWait/metricsSize;
+	avTurnaround = avTurnaround/metricsSize;
+
+	//print final values for scheduler
+	printf("Calculating Final Scheduler Statistics...\n-----------------------------------------\n");
+	printf("Average Process Waiting Time:  %lfms\nAverage Turnaround Time:       %lfms\nAverage Throughput:            %lf processes per 100ms\n\n\n\n", 
+			avWait, 
+			avTurnaround,
+			(100/avTurnaround));
 }
