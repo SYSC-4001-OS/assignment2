@@ -105,7 +105,7 @@ void shiftArrayLeft(PCB pcb[], int size){
 //shifts an array right, discards the last value
 void shiftArrayRight(PCB array[], int startPoint, int arrSize){
 	if (startPoint == 0) startPoint++; //the first spot is going to be filled - leave it be
-	for (int i = arrSize - 1; i >= startPoint; --i)
+	for (int i = arrSize; i >= startPoint; --i)
 	{
 		array[i] = array[i-1];
 	}
