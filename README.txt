@@ -108,7 +108,7 @@ FIRST-COME FIRST-SERVE WITHOUT IO 	(.fcfs)
 
 -----------------------------------------------------------
 INPUT FORMAT:
-PRIORITY QUEUES WITHOUT IO 			(.pq)
+PRIORITY QUEUES WITHOUT IO 			(.dat)
 
 	It should be noted that each line denotes a new proccess with the
 	information per being shown as follows:
@@ -147,7 +147,7 @@ PRIORITY QUEUES WITHOUT IO 			(.pq)
 
 -----------------------------------------------------------
 INPUT FORMAT:
-PRIORITY QUEUES WITH IO 			(.pqx)
+PRIORITY QUEUES WITH IO 			(.datx)
 
 	It should be noted that each line denotes a new proccess with the
 	information per being shown as follows:
