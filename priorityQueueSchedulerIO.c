@@ -89,15 +89,15 @@ void shiftArrayLeft(PCB pcb[], int size){
 //shifts an array right, discards the last value
 void shiftArrayRight(PCB array[], int startPoint, int arrSize){
 	if (startPoint == 0) startPoint++; //the first spot is going to be filled - leave it be
-	for (int i = arrSize - 1; i >= startPoint; --i)
+	for (int i = arrSize; i >= startPoint; --i)
 	{
 		array[i] = array[i-1];
 	}
 }
 
 void addToReadyArrAtPriority(PCB array[], PCB pcb, int arrSize){
-	int i;
-	for (i = 0; i < readyArrSize; ++i)
+	int i = 0;
+	for (i = 0; i < arrSize; ++i)
 	{
 		 if (array[i].priority < pcb.priority){//we want to go before this one
 		 	shiftArrayRight(array, i, arrSize);//shift this and everything after 
@@ -118,12 +118,11 @@ void addToReadyArrAtPriority(PCB array[], PCB pcb, int arrSize){
 //print PCB
 void printPCB(PCB proc)
 {
-	printf("PID:      %d\nCPU Time: %d\nIOFrequency: %d\nIODuration: %d\nIORemaining: %d\nPriority: %d\n",
+	printf("PID:      %d\nCPU Time: %d\nIOFrequency: %d\nIODuration: %d\nPriority: %d\n",
 			proc.PID,
 			proc.requiredCPUTime,
 			proc.ioFrequency,
 			proc.ioDuration,
-			proc.ioRemaining,
 			proc.priority);
 }
 
@@ -283,27 +282,11 @@ int main(int argc, char const *argv[])
 			if (newArr[i].arrival <= simTime){ //if it's time for this process to arrive
 				addToReadyArrAtPriority(readyArr, newArr[i].pcb, readyArrSize); //add the PCB to the readyArr
 				printStateChange(readyArr[readyArrSize++].PID, "Arrived for execution"); //increment and print
-				for (int i2 = i; i2 < newArrSize-1; ++i2) //last element stays copied
+				for (int i2 = i; i2 < newArrSize; ++i2) 
 				{
 					newArr[i2] = newArr[i2+1];
 				}
 				newArrSize--;
-			}
-		}
-
-		// printf("WaitingArrSize = %d\n", waitingArrSize); //DEBUG
-		for (int i = 0; i < waitingArrSize; ++i) //always loop through the waitingList, if it's empty this compiles to a jump-over
-		{
-			// printf("Checking process %d in waiting list\n", waitingArr[i].PID); //DEBUG
-			waitingArr[i].ioRemaining--;
-			if (waitingArr[i].ioRemaining <= 0){
-				addToReadyArrAtPriority(readyArr, waitingArr[i], readyArrSize++);
-				printStateChange(waitingArr[i].PID, "IO --> ready");
-			 	for (int i2 = i; i2 < waitingArrSize-1; ++i2) //last element stays copied
-				{
-					waitingArr[i2] = waitingArr[i2+1];
-				}
-				waitingArrSize--;	
 			}
 		}
 
@@ -323,12 +306,28 @@ int main(int argc, char const *argv[])
 				printStateChange(running.PID, "running --> terminated");
 				// printPCB(running); //DEBUG
 			}
-			if (simTime % running.ioFrequency == 0){ //every time CPUTimeRemaining hits 
+			if (simTime % running.ioFrequency == 0){ //every time simtime lines up with the running processe's IOFrequency 
 				printStateChange(running.PID, "running --> IO");
 				running.ioRemaining = running.ioDuration;
-				waitingArr[waitingArrSize++] = running; //always add to the end
+				waitingArr[waitingArrSize++] = running; //always add to the end, no priorities here
 				CPUbusy = 0;
 			}
+		}
+
+		// printf("WaitingArrSize = %d\n", waitingArrSize); //DEBUG
+		for (int i = 0; i < waitingArrSize; ++i) //always loop through the waitingList, if it's empty this compiles to a jump-over
+		{
+			// printf("Checking process %d in waiting list\n", waitingArr[i].PID); //DEBUG
+			if (waitingArr[i].ioRemaining <= 0) {
+				addToReadyArrAtPriority(readyArr, waitingArr[i], readyArrSize++);
+				printStateChange(waitingArr[i].PID, "IO --> ready");
+			 	for (int i2 = i; i2 < waitingArrSize; ++i2) //last element stays copied
+				{
+					waitingArr[i2] = waitingArr[i2+1];
+				}
+				waitingArrSize--;	
+			}
+			waitingArr[i].ioRemaining--;
 		}
 
 
