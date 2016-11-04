@@ -34,8 +34,6 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include <unistd.h> //DEBUG
-
 #define MAX_PCB_PARAM_CHAR 10
 #define MAX_PROCESSES 40
 
@@ -294,7 +292,6 @@ int main(int argc, char const *argv[])
 
 
 		if (!CPUbusy){ //there's nothing in the CPU, put something in the CPU
-			usleep(1000000);
 			if (readyArrSize != 0){ //if there's nothing ready to be run, loop around again - this will come into play when we're doing IO
 				running = readyArr[0];
 				printStateChange(running.PID, "ready --> running");
