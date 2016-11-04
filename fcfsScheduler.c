@@ -246,7 +246,7 @@ int getPCBData(char fileName[])
 			}
 
 			//read new char
-			charRead = fgetc(fp);
+			charRead = fgetc(fp);	
 		}
 	return (numProc-1);
 	
@@ -330,8 +330,8 @@ int main(int argc, char const *argv[])
 					{
 						//correct metrics found
 						if (metrics[i].PID == readyArr[readyArrSize].PID)
-						{
-							metrics[i].startTime = simTime;
+						{	
+						metrics[i].startTime = simTime;
 							somethingSaved = TRUE ;
 						}
 						//check that we actually recorded something, we should never enter this statment
