@@ -16,6 +16,7 @@
 *						- branched from fcfsSchedualer.c
 *						- PCB struct added new values for I/O
 *						- input changed to accept new format
+*						- bug patched where I/O always exited 1 tick early
 *					v1.2.2
 *						- now records process turnaround, throughput, burst#,  total waiting time, av waiting time
 *						- processMetrics now holds endTime
@@ -467,9 +468,6 @@ int main(int argc, char const *argv[])
 		//have processes do IO
 		for(int i = 0; i < waitingArrSize; i++)
 		{
-			//decrement the amount of time process needs for io
-			waitingArr[i].ioRem--;
-
 			//process is done io
 			if (waitingArr[i].ioRem == 0)
 			{
@@ -491,7 +489,6 @@ int main(int argc, char const *argv[])
 					}
 					//dec size of newArr, dec i so as we check the new value we shifted into i
 					waitingArrSize--;
-					i--;
 				}
 				//case 2: i is at end
 				else
@@ -506,6 +503,9 @@ int main(int argc, char const *argv[])
 				printPCB(waitingArr[i]);
 				exit(0);
 			}
+
+			//decrement the amount of time process needs for io
+			waitingArr[i].ioRem--;
 		}
 
 
