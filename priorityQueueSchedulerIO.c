@@ -49,6 +49,7 @@ typedef struct PCB
 	int ioFrequency;			//How often the process goes to do I/O
 	int ioDuration;				//How long the process is gone to do I/O
 	int ioRemaining;			//How many ticks left until I/O is complete
+	int metricsPointer;
 } PCB;
 
 //temporary wrapper for newArr items
@@ -58,6 +59,20 @@ typedef struct PCBAndArrival
 	int arrival;				//when the PCB is schedualed to arrive
 }PCBAndArrival;
 
+
+//holds the running average for each processes waittime
+typedef struct processMetrics
+{
+	int PID;					//process ID these metrics are for
+	int endTime;				//when the process ended
+	int arrivalTime;			//when process was added to ready queue
+	int turnaroundTime;			//the process turnaround time (delta b/wn end and arival times)
+	int waitingTime;			//how many ms the process has been waiting in the ready queue total
+	int burstCount;				//running tally of how many bursts this process had to run to reach completion
+	int totalIOTime;
+	int IOBursts;
+	double meanWaitingTime;		//waitingTime/burstCount calculated at end
+}processMetrics;
 
 
 
@@ -74,7 +89,8 @@ int waitingArrSize = 0;					//the effective size of above
 PCB terminatedArr[MAX_PROCESSES];		//the pseudo-list of all completed processes
 int terminatedArrSize = 0;				//the effective size of above
 PCB running;							//simulated processor. Whatever PCB is in here is "running"
-
+processMetrics metrics[MAX_PROCESSES];
+int metricsSize = 0;
 
 //utility methods
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -110,6 +126,12 @@ void addToReadyArrAtPriority(PCB array[], PCB pcb, int arrSize){
 		array[i] = pcb;
 	} else return; //undefined behaviour - user exceeded max processes
 
+}
+
+//calculate metrics
+void calculateMetrics(int i){
+	metrics[i].meanWaitingTime = (float)metrics[i].waitingTime/(float)metrics[i].burstCount;
+	metrics[i].turnaroundTime = metrics[i].endTime - metrics[i].arrivalTime;
 }
 
 
@@ -160,6 +182,26 @@ void printPCBAndArrivalArray(PCBAndArrival arr[], int length)
 }
 
 
+void printMetric(processMetrics m)
+{
+	printf("PID:      %d\nendTime: %d\nArrivalTime: %d\nturnaroundTime: %d\nwaitingTime: %d\nBurstCount: %d\nmeanWaitingTime: %2f\ntotalIOTime: %d\nIOBursts: %d\n",
+	m.PID,					//process ID these metrics are for
+	m.endTime,				//when the process ended
+	m.arrivalTime,			//when process was added to ready queue
+	m.turnaroundTime,			//the process turnaround time (delta b/wn end and arival times)
+	m.waitingTime,			//how many ms the process has been waiting in the ready queue total
+	m.burstCount,				//running tally of how many bursts this process had to run to reach completion
+	m.meanWaitingTime,
+	m.totalIOTime,
+	m.IOBursts);
+}
+
+void printMetricsArray(processMetrics m[], int arraySize){
+	for (int i = 0; i < arraySize; ++i)
+	{
+		printMetric(m[i]);
+	}
+}
 
 
 
@@ -280,6 +322,11 @@ int main(int argc, char const *argv[])
 		for (int i = 0; i < newArrSize; ++i) //always loop through the ready list, if it's empty this compiles to a jump-over
 		{
 			if (newArr[i].arrival <= simTime){ //if it's time for this process to arrive
+
+				newArr[i].pcb.metricsPointer = metricsSize++; //give this pcb a pointer to its METRICS
+				metrics[newArr[i].pcb.metricsPointer].arrivalTime = simTime; //set the arrival time
+				metrics[newArr[i].pcb.metricsPointer].PID = newArr[i].pcb.PID; //set the arrival time
+
 				addToReadyArrAtPriority(readyArr, newArr[i].pcb, readyArrSize); //add the PCB to the readyArr
 				printStateChange(readyArr[readyArrSize++].PID, "Arrived for execution"); //increment and print
 				for (int i2 = i; i2 < newArrSize; ++i2) 
@@ -290,11 +337,11 @@ int main(int argc, char const *argv[])
 			}
 		}
 
-
 		if (!CPUbusy){ //there's nothing in the CPU, put something in the CPU
 			if (readyArrSize != 0){ //if there's nothing ready to be run, loop around again - this will come into play when we're doing IO
 				running = readyArr[0];
 				printStateChange(running.PID, "ready --> running");
+				metrics[running.metricsPointer].burstCount++; // METRICS add another burst
 				shiftArrayLeft(readyArr, readyArrSize--); //take the first thing off the top, and shift everything else left
 				CPUbusy = 1;
 			}
@@ -303,11 +350,13 @@ int main(int argc, char const *argv[])
 			if (running.requiredCPUTime <= 0){ //this process is done running
 				CPUbusy = 0;//free the CPU
 				terminatedArr[terminatedArrSize++] = running; //add it to the terminated array
+				metrics[running.metricsPointer].endTime = simTime; //METRICS give it an end time
 				printStateChange(running.PID, "running --> terminated");
 				// printPCB(running); //DEBUG
 			}
 			if (simTime % running.ioFrequency == 0){ //every time simtime lines up with the running processe's IOFrequency 
 				printStateChange(running.PID, "running --> IO");
+				metrics[running.metricsPointer].IOBursts++;
 				running.ioRemaining = running.ioDuration;
 				waitingArr[waitingArrSize++] = running; //always add to the end, no priorities here
 				CPUbusy = 0;
@@ -318,6 +367,7 @@ int main(int argc, char const *argv[])
 		for (int i = 0; i < waitingArrSize; ++i) //always loop through the waitingList, if it's empty this compiles to a jump-over
 		{
 			// printf("Checking process %d in waiting list\n", waitingArr[i].PID); //DEBUG
+			metrics[waitingArr[i].metricsPointer].totalIOTime++;
 			if (waitingArr[i].ioRemaining <= 0) {
 				addToReadyArrAtPriority(readyArr, waitingArr[i], readyArrSize++);
 				printStateChange(waitingArr[i].PID, "IO --> ready");
@@ -331,7 +381,21 @@ int main(int argc, char const *argv[])
 		}
 
 
+		for (int i = 0; i < readyArrSize; ++i) //METRICS
+		{
+			metrics[readyArr[i].metricsPointer].waitingTime++; //increment the waiting time of each process in the waiting list
+		}
+
 		++simTime; //every time through the loop we increment the simTime
 
+		if (newArrSize == 0 && readyArrSize == 0 && !CPUbusy && waitingArrSize==0) break; //there's nothing running, ready, doing IO or waiting to enter the processor
+
 	}
+
+	for (int i = 0; i < metricsSize; ++i)
+	{
+		calculateMetrics(i);
+	}
+
+	printMetricsArray(metrics, metricsSize);
 }
